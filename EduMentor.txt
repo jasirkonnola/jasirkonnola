@@ -1,0 +1,235 @@
+# EduMentor - Peer-to-Peer Academic Support Platform
+
+## Project Structure
+
+```
+edumentor/             <-- Django Project Folder
+|-- edumentor/         <-- Project settings
+|-- core/              <-- App for all functionality
+|-- templates/         <-- HTML Templates
+|-- static/            <-- CSS, JS, Images
+```
+
+---
+
+## Step-by-Step Setup
+
+### 1. Install & Create Project
+```bash
+pip install django
+
+# Create Project
+django-admin startproject edumentor
+cd edumentor
+
+# Create App
+python manage.py startapp core
+```
+
+### 2. Register App and Custom User
+
+#### edumentor/settings.py
+```python
+INSTALLED_APPS = [
+    ...
+    'core',
+    'django.contrib.staticfiles',
+]
+
+AUTH_USER_MODEL = 'core.User'
+```
+
+---
+
+## core/models.py
+```python
+from django.contrib.auth.models import AbstractUser
+from django.db import models
+
+class User(AbstractUser):
+    ROLE_CHOICES = (
+        ('student', 'Student'),
+        ('mentor', 'Mentor'),
+        ('admin', 'Admin'),
+    )
+    role = models.CharField(max_length=10, choices=ROLE_CHOICES)
+
+class Doubt(models.Model):
+    subject = models.CharField(max_length=100)
+    content = models.TextField()
+    posted_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    posted_at = models.DateTimeField(auto_now_add=True)
+    is_answered = models.BooleanField(default=False)
+
+class Answer(models.Model):
+    doubt = models.ForeignKey(Doubt, related_name='answers', on_delete=models.CASCADE)
+    content = models.TextField()
+    answered_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    answered_at = models.DateTimeField(auto_now_add=True)
+
+class Upvote(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    answer = models.ForeignKey(Answer, on_delete=models.CASCADE)
+```
+
+---
+
+## core/forms.py
+```python
+from django import forms
+from django.contrib.auth.forms import UserCreationForm
+from .models import User, Doubt, Answer
+
+class RegisterForm(UserCreationForm):
+    class Meta:
+        model = User
+        fields = ('username', 'email', 'password1', 'password2', 'role')
+
+class DoubtForm(forms.ModelForm):
+    class Meta:
+        model = Doubt
+        fields = ['subject', 'content']
+
+class AnswerForm(forms.ModelForm):
+    class Meta:
+        model = Answer
+        fields = ['content']
+```
+
+---
+
+## core/views.py
+```python
+from django.shortcuts import render, redirect
+from django.contrib.auth import authenticate, login, logout
+from .models import Doubt, Answer, Upvote
+from .forms import RegisterForm, DoubtForm, AnswerForm
+from django.contrib.auth.decorators import login_required
+
+# Register
+def register_view(request):
+    form = RegisterForm(request.POST or None)
+    if form.is_valid():
+        form.save()
+        return redirect('login')
+    return render(request, 'register.html', {'form': form})
+
+# Login
+def login_view(request):
+    if request.method == 'POST':
+        username = request.POST['username']
+        password = request.POST['password']
+        user = authenticate(request, username=username, password=password)
+        if user:
+            login(request, user)
+            return redirect('home')
+    return render(request, 'login.html')
+
+def logout_view(request):
+    logout(request)
+    return redirect('login')
+
+# Home/Dashboard
+@login_required
+def home_view(request):
+    doubts = Doubt.objects.all().order_by('-posted_at')
+    return render(request, 'home.html', {'doubts': doubts})
+
+@login_required
+def post_doubt(request):
+    form = DoubtForm(request.POST or None)
+    if form.is_valid():
+        doubt = form.save(commit=False)
+        doubt.posted_by = request.user
+        doubt.save()
+        return redirect('home')
+    return render(request, 'post_doubt.html', {'form': form})
+
+@login_required
+def answer_doubt(request, id):
+    doubt = Doubt.objects.get(id=id)
+    form = AnswerForm(request.POST or None)
+    if form.is_valid():
+        answer = form.save(commit=False)
+        answer.doubt = doubt
+        answer.answered_by = request.user
+        answer.save()
+        doubt.is_answered = True
+        doubt.save()
+        return redirect('home')
+    return render(request, 'answer_doubt.html', {'form': form, 'doubt': doubt})
+```
+
+---
+
+## templates/register.html
+```html
+<form method="POST">{% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Register</button>
+</form>
+```
+
+## templates/login.html
+```html
+<form method="POST">{% csrf_token %}
+    Username: <input type="text" name="username">
+    Password: <input type="password" name="password">
+    <button type="submit">Login</button>
+</form>
+```
+
+## templates/home.html
+```html
+<h2>Welcome {{ request.user.username }}</h2>
+<a href="/post_doubt">Post Doubt</a> | <a href="/logout">Logout</a>
+<ul>
+{% for doubt in doubts %}
+    <li><strong>{{ doubt.subject }}</strong>: {{ doubt.content }}
+    <a href="/answer/{{ doubt.id }}">Answer</a>
+    </li>
+{% endfor %}
+</ul>
+```
+
+---
+
+## urls.py (project-level and app-level combined)
+```python
+from django.contrib import admin
+from django.urls import path
+from core import views
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('', views.home_view, name='home'),
+    path('register/', views.register_view, name='register'),
+    path('login/', views.login_view, name='login'),
+    path('logout/', views.logout_view, name='logout'),
+    path('post_doubt/', views.post_doubt, name='post_doubt'),
+    path('answer/<int:id>/', views.answer_doubt, name='answer_doubt'),
+]
+```
+
+---
+
+## Sample Output
+
+### Register Page
+> Allows user to select role: Student / Mentor / Admin
+
+### Login Page
+> Login with credentials
+
+### Home Page
+> List of all doubts with "Answer" option if unanswered
+
+### Post Doubt
+> Form with subject and content fields
+
+### Answer Page
+> Form to submit an answer for the doubt
+
+---
+
+Would you like a ZIP of this complete code project with folders ready to run locally? Or shall I walk you through deployment steps next?
