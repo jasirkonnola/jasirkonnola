@@ -1,0 +1,341 @@
+1. Project Structure
+cpp
+Copy
+Edit
+smart_study_assistant/
+│
+├── app.py
+├── models.py
+├── templates/
+│   ├── base.html
+│   ├── login.html
+│   ├── register.html
+│   ├── dashboard.html
+│   ├── upload.html
+│   ├── subjects.html
+│   └── topics.html
+├── uploads/
+└── requirements.txt
+2. requirements.txt
+nginx
+Copy
+Edit
+Flask
+Flask-Login
+Flask-SQLAlchemy
+PyPDF2
+sumy
+3. models.py
+python
+Copy
+Edit
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import UserMixin
+
+db = SQLAlchemy()
+
+class User(UserMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(150), unique=True)
+    password = db.Column(db.String(150))
+
+class Subject(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(150))
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    topics = db.relationship('Topic', backref='subject', lazy=True)
+
+class Topic(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(150))
+    short_notes = db.Column(db.Text)
+    completed = db.Column(db.Boolean, default=False)
+    subject_id = db.Column(db.Integer, db.ForeignKey('subject.id'))
+4. app.py (main Flask app)
+python
+Copy
+Edit
+import os
+from flask import Flask, render_template, redirect, url_for, request, flash
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager, login_user, login_required, logout_user, current_user
+from werkzeug.utils import secure_filename
+import PyPDF2
+from sumy.parsers.plaintext import PlaintextParser
+from sumy.nlp.tokenizers import Tokenizer
+from sumy.summarizers.lex_rank import LexRankSummarizer
+from models import db, User, Subject, Topic
+
+app = Flask(__name__)
+app.config['SECRET_KEY'] = 'your_secret_key'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite3'
+app.config['UPLOAD_FOLDER'] = 'uploads'
+
+db.init_app(app)
+
+login_manager = LoginManager()
+login_manager.login_view = 'login'
+login_manager.init_app(app)
+
+if not os.path.exists(app.config['UPLOAD_FOLDER']):
+    os.makedirs(app.config['UPLOAD_FOLDER'])
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+def summarize_text(text, sentences_count=5):
+    parser = PlaintextParser.from_string(text, Tokenizer("english"))
+    summarizer = LexRankSummarizer()
+    summary = summarizer(parser.document, sentences_count)
+    return ' '.join(str(sentence) for sentence in summary)
+
+@app.route('/')
+def index():
+    return redirect(url_for('login'))
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        password = request.form.get('password')  # Use hashed password in production!
+        if User.query.filter_by(email=email).first():
+            flash('Email already registered.')
+            return redirect(url_for('register'))
+        new_user = User(email=email, password=password)
+        db.session.add(new_user)
+        db.session.commit()
+        flash('Registration successful. Please login.')
+        return redirect(url_for('login'))
+    return render_template('register.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        password = request.form.get('password')
+        user = User.query.filter_by(email=email, password=password).first()
+        if user:
+            login_user(user)
+            return redirect(url_for('dashboard'))
+        flash('Invalid credentials.')
+    return render_template('login.html')
+
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    subjects = Subject.query.filter_by(user_id=current_user.id).all()
+    return render_template('dashboard.html', subjects=subjects)
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for('login'))
+
+@app.route('/upload_syllabus', methods=['GET', 'POST'])
+@login_required
+def upload_syllabus():
+    if request.method == 'POST':
+        file = request.files['file']
+        if file and file.filename.endswith('.pdf'):
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(filepath)
+
+            text = ''
+            with open(filepath, 'rb') as f:
+                reader = PyPDF2.PdfReader(f)
+                for page in reader.pages:
+                    text += page.extract_text()
+
+            short_notes = summarize_text(text, sentences_count=5)
+
+            # For MVP: Let user enter a subject name and topic manually here, store notes
+            subject_name = request.form.get('subject')
+            topic_name = request.form.get('topic')
+
+            if not subject_name or not topic_name:
+                flash('Please enter subject and topic names.')
+                return redirect(url_for('upload_syllabus'))
+
+            subject = Subject.query.filter_by(name=subject_name, user_id=current_user.id).first()
+            if not subject:
+                subject = Subject(name=subject_name, user_id=current_user.id)
+                db.session.add(subject)
+                db.session.commit()
+
+            topic = Topic(name=topic_name, short_notes=short_notes, subject_id=subject.id)
+            db.session.add(topic)
+            db.session.commit()
+
+            flash('Syllabus uploaded and notes generated!')
+            return redirect(url_for('dashboard'))
+        else:
+            flash('Please upload a valid PDF file.')
+    return render_template('upload.html')
+
+@app.route('/subjects/<int:subject_id>/topics')
+@login_required
+def topics(subject_id):
+    subject = Subject.query.get_or_404(subject_id)
+    topics = Topic.query.filter_by(subject_id=subject_id).all()
+    return render_template('topics.html', subject=subject, topics=topics)
+
+@app.route('/topics/<int:topic_id>/complete')
+@login_required
+def complete_topic(topic_id):
+    topic = Topic.query.get_or_404(topic_id)
+    topic.completed = True
+    db.session.commit()
+    flash('Marked as completed!')
+    return redirect(url_for('topics', subject_id=topic.subject_id))
+
+if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()
+    app.run(debug=True)
+5. Basic HTML Templates
+Put these inside templates/ folder.
+
+base.html
+
+html
+Copy
+Edit
+<!doctype html>
+<html>
+<head>
+  <title>Smart Study Assistant</title>
+</head>
+<body>
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      <ul>
+      {% for message in messages %}
+        <li>{{ message }}</li>
+      {% endfor %}
+      </ul>
+    {% endif %}
+  {% endwith %}
+
+  {% block content %}{% endblock %}
+</body>
+</html>
+register.html
+
+html
+Copy
+Edit
+{% extends "base.html" %}
+{% block content %}
+<h2>Register</h2>
+<form method="post">
+  Email: <input type="email" name="email" required><br>
+  Password: <input type="password" name="password" required><br>
+  <input type="submit" value="Register">
+</form>
+<a href="{{ url_for('login') }}">Login</a>
+{% endblock %}
+login.html
+
+html
+Copy
+Edit
+{% extends "base.html" %}
+{% block content %}
+<h2>Login</h2>
+<form method="post">
+  Email: <input type="email" name="email" required><br>
+  Password: <input type="password" name="password" required><br>
+  <input type="submit" value="Login">
+</form>
+<a href="{{ url_for('register') }}">Register</a>
+{% endblock %}
+dashboard.html
+
+html
+Copy
+Edit
+{% extends "base.html" %}
+{% block content %}
+<h2>Dashboard</h2>
+<p>Welcome, {{ current_user.email }}! <a href="{{ url_for('logout') }}">Logout</a></p>
+
+<h3>Your Subjects</h3>
+<ul>
+  {% for subject in subjects %}
+    <li><a href="{{ url_for('topics', subject_id=subject.id) }}">{{ subject.name }}</a></li>
+  {% else %}
+    <li>No subjects added yet.</li>
+  {% endfor %}
+</ul>
+
+<a href="{{ url_for('upload_syllabus') }}">Upload Syllabus & Add Topic</a>
+{% endblock %}
+upload.html
+
+html
+Copy
+Edit
+{% extends "base.html" %}
+{% block content %}
+<h2>Upload Syllabus PDF & Generate Notes</h2>
+<form method="post" enctype="multipart/form-data">
+  PDF File: <input type="file" name="file" accept="application/pdf" required><br>
+  Subject Name: <input type="text" name="subject" required><br>
+  Topic Name: <input type="text" name="topic" required><br>
+  <input type="submit" value="Upload and Generate">
+</form>
+<a href="{{ url_for('dashboard') }}">Back to Dashboard</a>
+{% endblock %}
+topics.html
+
+html
+Copy
+Edit
+{% extends "base.html" %}
+{% block content %}
+<h2>Topics for Subject: {{ subject.name }}</h2>
+<ul>
+  {% for topic in topics %}
+    <li>
+      <strong>{{ topic.name }}</strong> -
+      {% if topic.completed %}
+        Completed
+      {% else %}
+        <a href="{{ url_for('complete_topic', topic_id=topic.id) }}">Mark as Completed</a>
+      {% endif %}
+      <p>Notes: {{ topic.short_notes }}</p>
+    </li>
+  {% else %}
+    <li>No topics added.</li>
+  {% endfor %}
+</ul>
+<a href="{{ url_for('dashboard') }}">Back to Dashboard</a>
+{% endblock %}
+How to run
+Install dependencies from requirements.txt:
+
+bash
+Copy
+Edit
+pip install -r requirements.txt
+Run the app:
+
+bash
+Copy
+Edit
+python app.py
+Open http://127.0.0.1:5000 in your browser.
+
+What’s next?
+Add password hashing for security (use werkzeug.security).
+
+Add spaced repetition scheduling.
+
+Add previous year questions upload & display.
+
+Improve UI with Bootstrap or React.
+
+Deploy online (Heroku, PythonAnywhere).
