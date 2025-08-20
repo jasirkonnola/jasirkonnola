@@ -1,0 +1,112 @@
+Smart Study Assistant — Project Steps & Features
+1. User Registration
+Students register with email, username, and password.
+
+Optionally add university and course details during registration.
+
+2. User Login
+Secure login using credentials.
+
+Session management.
+
+3. Select University
+Dropdown or search to select the student’s university.
+
+This will help tailor the syllabus, subjects, and question bank.
+
+4. Upload Study Material / Syllabus
+Upload .pdf syllabus or other study materials.
+
+Extract text from PDF using libraries like PyPDF2 or pdfplumber (Python).
+
+Store the text for processing.
+
+5. Select Semester
+User selects the semester related to the uploaded syllabus.
+
+Link the semester with subjects.
+
+6. Select Subjects
+Display subjects parsed or manually selected from syllabus.
+
+Student confirms or edits subject list.
+
+7. Categorize Subject Topics
+Parse syllabus content to break down subjects into topics/modules.
+
+Auto-create categories or allow user to define them.
+
+8. Generate Short Notes & Active Learning Support
+Use NLP techniques (like summarization, keyword extraction) to create concise notes for each topic.
+
+Highlight key points to facilitate active recall.
+
+Implement spaced repetition scheduling (e.g., using SM-2 algorithm or simple intervals).
+
+Enable students to mark topics as “understood” or “needs review.”
+
+9. Progress Tracking & Module Completion
+Track progress of each topic/module.
+
+Show percentage completion per subject/semester.
+
+Unlock next module based on progress.
+
+10. Provide Previous Year Question Papers
+Based on university and degree info, fetch and display relevant past questions.
+
+Questions can be categorized by subject and module.
+
+11. Start New Semester
+After completing current semester, option to upload next semester’s syllabus.
+
+Repeat the process.
+
+12. Get New Study Material
+Allow uploading additional notes, references, or updated syllabus anytime.
+
+Tech Stack Suggestion
+Backend: Python Flask or Django (good for PDF parsing, NLP integration)
+
+Frontend: React.js or simple HTML/CSS/JS for UI
+
+Database: MySQL / PostgreSQL / SQLite (user data, syllabus, progress)
+
+NLP Libraries: Hugging Face transformers, NLTK, or SpaCy for summarization and keyword extraction
+
+PDF Parsing: PyPDF2, pdfplumber
+
+Authentication: JWT or session-based login
+
+Example User Flow
+Register & login →
+
+Select university →
+
+Upload syllabus PDF →
+
+Select semester and subjects →
+
+System auto-generates categorized topics and short notes →
+
+User studies topics using active learning prompts →
+
+System schedules spaced repetition reminders →
+
+User marks progress →
+
+System provides past exam questions related to topics →
+
+User completes semester →
+
+Upload new semester syllabus and continue
+
+Would you like me to help you with:
+
+A sample database schema?
+
+A basic backend API example for uploading PDFs and extracting text?
+
+A UI wireframe?
+
+A small prototype for the note summarization feature?
