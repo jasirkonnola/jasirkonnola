@@ -1,23 +1,22 @@
-## Hey there! 👋 
+# Hey there! 👋
 
-I'm Jasir, an aspiring software developer based in Kerala, India.
+I'm [Jasir](https://github.com/jasirkonnola), an MCA student based in Kerala, India.
 
-I build things at the intersection of web development and machine learning. If there's a problem to solve, chances are I'll spin up a Django app or train a model to crack it.
+I build things at the intersection of web development and machine learning.
 
-My main tech stack is **Python, Django, and Bootstrap** — with **Scikit-learn, Pandas, and NumPy** for everything ML-related.
+If there's a real-world problem to solve, chances are I'll build a Django app or train a model to crack it.
 
-My favorite tools are **VS Code**, **PyCharm**, and **Git/GitHub** for keeping it all together.
+My main tech stack is Python, Django, and Bootstrap. My favorite tools are VS Code, PyCharm, and Git/GitHub.
 
-I've got a couple of projects I'm proud of, but my favorite is **EduMentor** — a full academic Q&A platform with role-based access and moderation tools — closely followed by my **RAG-based AI Chatbot**, which answers questions straight from your documents using retrieval-augmented generation.
+I've got a couple of pinned projects, but my favorite is the [RAG-Based AI Chatbot](https://github.com/jasirkonnola/Main_Project).
 
-I'm currently pursuing my **MCA**, and outside of coursework I'm deep in machine learning — from regression and NLP to deploying models on AWS SageMaker.
+I'm currently pursuing my MCA, and outside of coursework I'm deep in machine learning — from regression and NLP to deploying models on AWS SageMaker.
+
+If you want to see more of what I've built, check out [EduMentor](https://github.com/jasirkonnola/EduMentor)!
 
 **Fun Facts:**
+
 - I'm fluent in English and Malayalam
-- I'd rather debug code than sit through small talk
 - AWS SageMaker, Comprehend, and Rekognition are part of my regular toolkit
-- I genuinely enjoy turning a vague problem into working software
-
-**Hobbies:** exploring ML research, building side projects, and constantly tweaking my dev setup
-
-📫 Reach me: jasirhassan.894315@gmail.com | [LinkedIn](https://www.linkedin.com/in/jasir-konnola/)
+- I'd rather debug code than sit through small talk
+- **Hobbies:** machine learning, side projects, tweaking my dev setup
